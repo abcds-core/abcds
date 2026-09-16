@@ -16,7 +16,7 @@ Alzheimer's Biomarker Consortium - Down Syndrome (ABC-DS) Study. The
 
 \code{\link{read_apoe}}
 
-\code{\link{read_cognitive}}
+\code{\link{read_cognition}}
 
 \code{\link{read_demographics}}
 

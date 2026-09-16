@@ -4,11 +4,14 @@
 \alias{apply_factor_labels}
 \title{apply_factor_labels}
 \usage{
-apply_factor_labels(data)
+apply_factor_labels(data, ids = c("subject_label", "event_sequence"))
 }
 \arguments{
 \item{data}{An data set existing in the user's global environment for
 which to apply the factor labels}
+
+\item{ids}{The ID variables used to merge the split factor levels back to the original
+dataset, Default: c("subject_label", "event_sequence")}
 }
 \value{
 A data set that converts character variables to factors

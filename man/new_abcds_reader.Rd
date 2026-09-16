@@ -8,7 +8,8 @@ new_abcds_reader(
   pattern,
   default_cols = NULL,
   .f = NULL,
-  include_demographics = TRUE
+  include_demographics = TRUE,
+  controls = FALSE
 )
 }
 \arguments{
@@ -37,9 +38,9 @@ If NULL, uses the path set by \code{\link[=set_abcds_directory]{set_abcds_direct
 participant data. Default is FALSE.}
 \item{add_demographics}{Logical. If TRUE, merges demographic data
 (age, gender, race, ethnicity) with the returned data. Default is TRUE.}
-\item{col_types}{Column specification for \code{\link[readr:read_delim]{readr::read_csv()}}. Defaults to
+\item{col_types}{Column specification for \code{\link[readr:read_csv]{readr::read_csv()}}. Defaults to
 the \code{default_cols} specified in the factory.}
-\item{...}{Additional arguments passed to \code{\link[readr:read_delim]{readr::read_csv()}}.}
+\item{...}{Additional arguments passed to \code{\link[readr:read_csv]{readr::read_csv()}}.}
 }
 }
 \description{
@@ -67,7 +68,7 @@ using baseline (event_sequence == 1) demographics.
 }
 \seealso{
 \code{\link[cli:cli_abort]{cli::cli_abort()}} for error messages
-\code{\link[readr:read_delim]{readr::read_csv()}} for reading CSV files
-\code{\link[dplyr:mutate-joins]{dplyr::right_join()}} for merging demographics
+\code{\link[readr:read_csv]{readr::read_csv()}} for reading CSV files
+\code{\link[dplyr:right_join]{dplyr::right_join()}} for merging demographics
 }
 \keyword{internal}

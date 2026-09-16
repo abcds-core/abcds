@@ -10,13 +10,18 @@ Eases the reporting and analysis of data from the Alzheimer's Biomarker Consorti
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/bhelsel/abcds}
-  \item Report bugs at \url{https://github.com/bhelsel/abcds/issues}
+  \item \url{https://github.com/abcds-core/abcds}
+  \item Report bugs at \url{https://github.com/abcds-core/abcds/issues}
 }
 
 }
 \author{
 \strong{Maintainer}: Brian C. Helsel \email{bhelsel@kumc.edu}
+
+Authors:
+\itemize{
+  \item Brian C. Helsel \email{bhelsel@kumc.edu}
+}
 
 }
 \keyword{internal}

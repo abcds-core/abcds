@@ -4,7 +4,13 @@
 \alias{split_factor_labels}
 \title{Split Factor Labels into Binary Columns}
 \usage{
-split_factor_labels(data, dictionary, variable, delim = "|")
+split_factor_labels(
+  data,
+  dictionary,
+  variable,
+  ids = c("subject_label", "event_sequence"),
+  delim = "|"
+)
 }
 \arguments{
 \item{data}{A data frame containing the variable to split.}
@@ -12,6 +18,9 @@ split_factor_labels(data, dictionary, variable, delim = "|")
 \item{dictionary}{A list containing the levels and labels for the variable.}
 
 \item{variable}{The variable in \code{data} to split (unquoted).}
+
+\item{ids}{The ID variables used to merge the split factor levels back to the original
+dataset, Default: c("subject_label", "event_sequence")}
 
 \item{delim}{A character string used to separate multiple values in the variable.
 Default: \code{"|"}.}

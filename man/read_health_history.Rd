@@ -6,7 +6,7 @@
 \usage{
 read_health_history(
   directory = NULL,
-  controls = FALSE,
+  controls = default_controls,
   add_demographics = include_demographics,
   col_types = default_cols
 )
@@ -21,7 +21,7 @@ participant data. Default is FALSE.}
 \item{add_demographics}{Logical. If TRUE, merges demographic data
 (age, gender, race, ethnicity) with the returned data. Default is TRUE.}
 
-\item{col_types}{Column specification for \code{\link[readr:read_delim]{readr::read_csv()}}. If NULL,
+\item{col_types}{Column specification for \code{\link[readr:read_csv]{readr::read_csv()}}. If NULL,
 column types will be guessed.}
 }
 \value{
