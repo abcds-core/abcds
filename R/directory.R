@@ -89,14 +89,16 @@ check_abcds_directory <- function(directory = NULL) {
     return(invisible(NULL))
   }
 
-  if (is.null(files) || !any(files %in% loni_file_names)) {
-    cli::cli_alert_warning("No expected LONI CSV files found in:")
-    cli::cli_text("\u00A0\u00A0{cli::col_yellow(directory)}")
-    cli::cli_alert_info("It may have been moved or is incomplete.")
-    cli::cli_alert_info(
-      "Please re-run `abcds::set_abcds_directory()` to update your setup."
-    )
-    return(invisible(NULL))
+  if (!file.exists(file.path(directory, "abcds.duckdb"))) {
+    if (is.null(files) || !any(files %in% loni_file_names)) {
+      cli::cli_alert_warning("No expected LONI CSV files found in:")
+      cli::cli_text("\u00A0\u00A0{cli::col_yellow(directory)}")
+      cli::cli_alert_info("It may have been moved or is incomplete.")
+      cli::cli_alert_info(
+        "Please re-run `abcds::set_abcds_directory()` to update your setup."
+      )
+      return(invisible(NULL))
+    }
   }
 
   invisible(directory)
@@ -154,7 +156,7 @@ set_abcds_directory <- function(env_var_name = "ABCDS_LONI_DATA_DIRECTORY") {
   )
   cli::cli_alert_info("Example: ~/ABCDS/data or C:/Users/yourname/ABCDS")
   repeat {
-    directory <- trimws(readline(prompt = ">>> "))
+    directory <- gsub("[\"']", "", trimws(readline(prompt = ">>> ")))
 
     # Convert Windows-style backslashes to forward slashes
     directory <- gsub("\\\\", "/", directory)
@@ -199,7 +201,7 @@ set_abcds_directory <- function(env_var_name = "ABCDS_LONI_DATA_DIRECTORY") {
     renv_path <- path.expand("~/.Renviron")
     lines <- if (file.exists(renv_path)) readLines(renv_path) else character()
     lines <- lines[!grepl(paste0("^", env_var_name, "="), lines)]
-    lines <- c(lines, paste0(env_var_name, "=", directory))
+    lines <- c(lines, paste0(env_var_name, '=', '"', directory, '"'))
     writeLines(lines, renv_path)
 
     cli::cli_alert_success("Saved {env_var_name} to your .Renviron file.")
