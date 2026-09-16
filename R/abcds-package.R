@@ -13,7 +13,7 @@
 #'
 #' \code{\link{read_apoe}}
 #'
-#' \code{\link{read_cognitive}}
+#' \code{\link{read_cognition}}
 #'
 #' \code{\link{read_demographics}}
 #'
