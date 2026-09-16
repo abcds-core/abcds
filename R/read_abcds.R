@@ -89,7 +89,7 @@ new_abcds_reader <- function(
         file.path(directory, "abcds.duckdb")
       )
       key <- dplyr::collect(dplyr::tbl(con, "key"))
-      files <- key$table_name[grepl(pattern, key$file_names, perl = TRUE)]
+      files <- key$table_names[grepl(pattern, key$file_names, perl = TRUE)]
     } else {
       files <- list.files(directory, full.names = TRUE)
       files <- files[grepl(pattern, basename(files), perl = TRUE)]
