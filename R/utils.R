@@ -85,6 +85,8 @@ abcds_join <- function(x, y, by, join_type) {
 #' @param data A data frame containing the variable to split.
 #' @param dictionary A list containing the levels and labels for the variable.
 #' @param variable The variable in \code{data} to split (unquoted).
+#' @param ids The ID variables used to merge the split factor levels back to the original
+#'   dataset, Default: c("subject_label", "event_sequence")
 #' @param delim A character string used to separate multiple values in the variable.
 #'   Default: \code{"|"}.
 #'
@@ -107,13 +109,19 @@ abcds_join <- function(x, y, by, join_type) {
 #' @importFrom tidyr pivot_wider separate_longer_delim
 #' @keywords internal
 
-split_factor_labels <- function(data, dictionary, variable, delim = "|") {
+split_factor_labels <- function(
+  data,
+  dictionary,
+  variable,
+  ids = c("subject_label", "event_sequence"),
+  delim = "|"
+) {
   variable <- as.character(rlang::ensym(variable))
 
   original_data <- data
 
   data <- tidyr::separate_longer_delim(
-    data[, c("subject_label", "event_sequence", variable)],
+    data[, c(ids, variable)],
     cols = variable,
     delim = delim
   )
@@ -138,7 +146,7 @@ split_factor_labels <- function(data, dictionary, variable, delim = "|") {
 
   data <- tidyr::pivot_wider(
     data[!is.na(data[[variable]]), ],
-    id_cols = c("subject_label", "event_sequence"),
+    id_cols = ids,
     names_from = variable,
     values_fill = 0,
     values_fn = max
@@ -148,7 +156,7 @@ split_factor_labels <- function(data, dictionary, variable, delim = "|") {
     abcds_join(
       x = original_data,
       y = data,
-      by = c("subject_label", "event_sequence"),
+      by = ids,
       join_type = full_join
     )
 
@@ -156,18 +164,68 @@ split_factor_labels <- function(data, dictionary, variable, delim = "|") {
 }
 
 
-.clean_file_names <- function(files) {
+#' @title .clean_file_names
+#' @keywords internal
+#' @noRd
+#' @importFrom purrr map_chr
+
+.clean_file_names <- function(files, remove_csv = TRUE) {
   patterns <- c(
-    "[0-9]{2}[A-Za-z]{3}[0-9]{4}.csv$",
-    "[0-9]{4}_[0-9]{2}_[0-9]{2}.csv$",
-    "_|_-_|__|___"
+    "[0-9]{2}[A-Za-z]{3}[0-9]{4}",
+    "[0-9]{4}_[0-9]{2}_[0-9]{2}",
+    "[0-9]{4}[0-9]{2}[0-9]{2}",
+    "_|_-_|__|___|-",
+    "ABC DS|ABCDS|Brickman lab|abcds|  ",
+    "\\s+\\."
   )
-  replacements <- c("\\1", "\\1", " ")
+  replacements <- c("\\1", "\\1", "\\1", " ", "", "\\.")
   for (i in 1:length(patterns)) {
     files <- gsub(pattern = patterns[i], replacement = replacements[i], files)
     if (i == length(patterns)) {
       files <- trimws(files)
+      files <- purrr::map_chr(files, .title_case)
     }
   }
+
+  if (remove_csv) {
+    files <- gsub(".csv$", "", files)
+  }
+
   return(files)
+}
+
+.title_case <- function(x) {
+  words <- strsplit(x, " ")[[1]]
+  words <- purrr::map_chr(
+    words,
+    ~ paste0(
+      toupper(substr(.x, 1, 1)),
+      substr(.x, 2, nchar(.x))
+    )
+  )
+
+  paste(words, collapse = " ")
+}
+
+
+.detect_person <- function(file) {
+  if (grepl("Control", file, ignore.case = TRUE)) {
+    return("control")
+  } else {
+    return("participant")
+  }
+}
+
+.print_description <- function() {
+  message(
+    "  ADDS: Alzheimer's Disease Down Syndrome
+  - New York, NY (Columbia University/New York State Institute for Basic Research in Developmental Disabilities);
+  - Boston, MA (Massachusetts General Hospital, Harvard University);
+  - Irvine, CA (the University of California, Irvine)\n
+  NiAD: Neurodegeneration in Aging Down Syndrome
+  - Pittsburgh, PA (University of Pittsburgh);
+  - Madison, WI (University of Wisconsin);
+  - St. Louis, MO (Washington University);
+  - Cambridge, England (University of Cambridge)"
+  )
 }
