@@ -63,24 +63,37 @@ new_abcds_reader <- function(
   pattern,
   default_cols = NULL,
   .f = NULL,
-  include_demographics = TRUE
+  include_demographics = TRUE,
+  controls = FALSE
 ) {
   force(pattern)
   force(default_cols)
   force(.f)
   force(include_demographics)
+  force(controls)
+  default_controls <- controls
 
   function(
     directory = NULL,
-    controls = FALSE,
+    controls = default_controls,
     add_demographics = include_demographics,
     col_types = default_cols
   ) {
     directory <- check_abcds_directory(directory)
 
-    files <- list.files(directory, full.names = TRUE)
+    duckdb_exists <- file.exists(file.path(directory, "abcds.duckdb"))
 
-    files <- files[grepl(pattern, basename(files), perl = TRUE)]
+    if (duckdb_exists) {
+      con <- DBI::dbConnect(
+        duckdb::duckdb(),
+        file.path(directory, "abcds.duckdb")
+      )
+      key <- dplyr::collect(dplyr::tbl(con, "key"))
+      files <- key$table_name[grepl(pattern, key$file_names, perl = TRUE)]
+    } else {
+      files <- list.files(directory, full.names = TRUE)
+      files <- files[grepl(pattern, basename(files), perl = TRUE)]
+    }
 
     check_single_file <- function(file) {
       if (length(file) > 1) {
@@ -97,17 +110,27 @@ new_abcds_reader <- function(
     person_types <- unname(sapply(files, .detect_person))
 
     if (!controls & "participant" %in% person_types) {
-      file <- check_single_file(files[!grepl("Controls", files)])
+      file <- check_single_file(files[
+        !grepl("Controls", files, ignore.case = TRUE)
+      ])
     } else if (controls & "control" %in% person_types) {
-      file <- check_single_file(files[grepl("Controls", files)])
+      file <- check_single_file(files[grepl(
+        "Controls",
+        files,
+        ignore.case = TRUE
+      )])
     }
 
-    data <- readr::read_csv(
-      file,
-      col_types = col_types,
-      guess_max = 2000,
-      show_col_types = FALSE
-    )
+    if (duckdb_exists) {
+      data <- dplyr::collect(dplyr::tbl(con, file))
+    } else {
+      data <- readr::read_csv(
+        file,
+        col_types = col_types,
+        guess_max = 2000,
+        show_col_types = FALSE
+      )
+    }
     if ("update_stamp" %in% colnames(data)) {
       data$update_stamp <- NULL
     }
@@ -153,7 +176,7 @@ new_abcds_reader <- function(
 #' (quoted or unquoted) and routes to the appropriate reader.
 #'
 #' @param readers Named list of reader functions created by [new_abcds_reader()].
-#'   Names should be the valid type options (e.g., "mri", "amyloid").
+#'   Names should be the valid type options (e.g., "mri", "amy").
 #'
 #' @return A function with the signature:
 #'   `function(type, directory, controls, add_demographics)`
@@ -190,7 +213,7 @@ new_abcds_grouped_reader <- function(readers) {
   function(
     type,
     directory = NULL,
-    controls = FALSE,
+    controls,
     add_demographics = TRUE
   ) {
     type <- as.character(rlang::ensym(type))
@@ -201,11 +224,13 @@ new_abcds_grouped_reader <- function(readers) {
       ))
     }
 
-    readers[[type]](
-      directory = directory,
-      controls = controls,
-      add_demographics = add_demographics
-    )
+    args <- list(directory = directory, add_demographics = add_demographics)
+
+    if (!missing(controls)) {
+      args$controls <- controls
+    }
+
+    do.call(readers[[type]], args)
   }
 }
 
@@ -351,7 +376,7 @@ read_simplified_demographics <- new_abcds_reader(
 #' from the ABCDS study.
 #'
 #' @param type Character string or unquoted name. Type of imaging data to read.
-#'   Options: `mri`, `amyloid`, `fdg`, or `tau`.
+#'   Options: `mri`, `amy`, `fdg`, or `tau`.
 #' @param directory Character string. Path to the directory containing data files.
 #'   If NULL, uses the path set by [set_abcds_directory()]. Default is NULL.
 #' @param controls Logical. If TRUE, reads control data; if FALSE, reads
@@ -369,7 +394,7 @@ read_simplified_demographics <- new_abcds_reader(
 #' mri_data <- read_imaging("mri")
 #'
 #' # Read amyloid PET data (unquoted)
-#' amyloid_data <- read_imaging(amyloid)
+#' amyloid_data <- read_imaging(amy)
 #'
 #' # Read tau PET for controls without demographics
 #' tau_controls <- read_imaging(tau, controls = TRUE, add_demographics = FALSE)
@@ -381,7 +406,7 @@ read_simplified_demographics <- new_abcds_reader(
 read_imaging <- new_abcds_grouped_reader(
   list(
     mri = new_abcds_reader("MRI_Scan"),
-    amyloid = new_abcds_reader("Amyloid_PET_Scan"),
+    amy = new_abcds_reader("Amyloid_PET_Scan"),
     fdg = new_abcds_reader("FDG_PET_Scan"),
     tau = new_abcds_reader("Tau_PET_Scan")
   )
@@ -470,3 +495,87 @@ read_athropometrics <- new_abcds_reader(
 #' }
 
 read_consensus <- new_abcds_reader("Consensus")
+
+
+#' Read blood draw data
+#'
+#' Reads the blood draw data from the blood collection sample data files from the ABCDS study.
+#'
+#' @inheritParams read_demographics
+#'
+#' @return A tibble containing the blood draw data optionally merged with demographics.
+#'
+#' @export
+#' @examples
+#' \dontrun{
+#' # Get blood draw data for participants
+#' blood_draw_data <- read_blood()
+#' }
+
+read_blood <- new_abcds_reader("Sample_Collection_-_Blood")
+
+#' Read cerebrospinal fluid data
+#'
+#' Reads the cerebrospinal fluid data from the cerebrospinal fluid collection
+#' sample data files from the ABCDS study.
+#'
+#' @inheritParams read_demographics
+#'
+#' @return A tibble containing the cerebrospinal fluid data optionally merged with
+#' demographics.
+#'
+#' @export
+#' @examples
+#' \dontrun{
+#' # Get cerebrospinal fluid data for participants
+#' csf_data <- read_csf()
+#' }
+
+read_csf <- new_abcds_reader("Sample_Collection_-_CSF")
+
+
+#' Read cognition data from ABCDS study
+#'
+#' Reads various cognitive function assessments from the ABCDS study.
+#'
+#' @param type Character string or unquoted name. Type of imaging data to read.
+#'   Options: `dsmse`, `recall`, `haxby`, `wisc`, `catdog`, `purude`, `tinetti`,
+#'   `vmi`, `verbal`, `radd`, `moca`
+#' @param directory Character string. Path to the directory containing data files.
+#'   If NULL, uses the path set by [set_abcds_directory()]. Default is NULL.
+#' @param controls Logical. If TRUE, reads control data; if FALSE, reads
+#'   participant data. Default is FALSE.
+#' @param add_demographics Logical. If TRUE, merges demographic data
+#'   (age, gender, race, ethnicity) with the returned data. Default is TRUE.
+#'
+#' @return A tibble containing the requested imaging data, optionally merged
+#'   with demographics.
+#'
+#' @examples
+#' \dontrun{
+#' # Read Mental Status Exam data (quoted)
+#' dsmse_data <- read_cognition("dsmse")
+#'
+#' # Read cued recall data (unquoted)
+#' recall_data <- read_cognition(recall)
+#'
+#' # Specify custom directory
+#' catdog_data <- read_cognition(catdog, directory = "path/to/data")
+#' }
+#' @export
+
+read_cognition <- new_abcds_grouped_reader(
+  list(
+    dsmse = new_abcds_reader("Down_Syndrome_Mental_Status_Exam"),
+    recall = new_abcds_reader("Cued_Recall"),
+    haxby = new_abcds_reader("Haxby_Extended_Block_Design"),
+    wisc = new_abcds_reader("WISC-IV_Block_Design"),
+    catdog = new_abcds_reader("Cats_and_Dogs_Task"),
+    purdue = new_abcds_reader("Purdue_Pegboard"),
+    tinetti = new_abcds_reader("Tinetti_Assessment_Tool__Gait_Test"),
+    vmi = new_abcds_reader("Visual-Motor_Integration"),
+    verbal = new_abcds_reader("Verbal_Fluency"),
+    radd = new_abcds_reader("RADD___Hand_Movements_Imitation"),
+    moca = new_abcds_reader("Montreal_Cognitive_Assessment", controls = TRUE)
+  )
+)
